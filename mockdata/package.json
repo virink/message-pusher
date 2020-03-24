@@ -1,0 +1,12 @@
+{
+  "name": "mockdata",
+  "version": "1.0.0",
+  "main": "main.js",
+  "author": "Virink",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "request": "^2.88.2",
+    "string-random": "^0.1.3"
+  }
+}

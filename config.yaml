@@ -1,0 +1,10 @@
+mysql:
+  host: 127.0.0.1
+  user: root
+  pass: 123456
+  name: pusher
+  charset: utf8mb4
+server:
+  debug: true
+  port: 8006
+  secret: lfysb
