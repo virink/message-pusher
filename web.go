@@ -19,15 +19,19 @@ type Resp struct {
 
 func loginHandler(c *gin.Context) {
 	var (
-		user Users
-		err  error
+		user, json Users
+		err        error
 	)
-	if err = c.BindJSON(&user); err != nil {
+	if err = c.BindJSON(&json); err != nil {
 		c.JSON(400, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
-	if user, err = findUsers(user.Username, MD5(user.Password)); err != nil {
+	if user, err = findUsersByUsername(json.Username); err != nil {
 		c.JSON(401, Resp{Code: 0, Msg: err.Error()})
+		return
+	}
+	if user.Password != MD5(json.Password) {
+		c.JSON(401, Resp{Code: 0, Msg: "password is error"})
 		return
 	}
 	session := sessions.Default(c)
@@ -51,7 +55,7 @@ func webhookHandler(c *gin.Context) {
 	)
 	// TODO: add receive log
 	data, _ = ioutil.ReadAll(c.Request.Body)
-	if receives, err = getRecevices(); err != nil {
+	if receives, err = findRecevices(); err != nil {
 		logger.Errorln(err.Error())
 		// TODO: add err logs
 	}
@@ -145,12 +149,77 @@ func addTemplateHandler(c *gin.Context) {
 	}
 	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: template})
 }
+func getUserHandler(c *gin.Context) {
+	var (
+		users []*Users
+		err   error
+	)
+	if users, err = findUsersByID(c.Param("id")); err != nil {
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
+		return
+	}
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: users})
+}
+
+func getReceiveHandler(c *gin.Context) {
+	var (
+		receives []*Receives
+		err      error
+	)
+	if receives, err = findReceivesByID(c.Param("id")); err != nil {
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
+		return
+	}
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: receives})
+}
+
+func getPusherHandler(c *gin.Context) {
+	var (
+		pushers []*Pushers
+		err     error
+	)
+	if pushers, err = findPushersByID(c.Param("id")); err != nil {
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
+		return
+	}
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: pushers})
+}
+
+func getRelationHandler(c *gin.Context) {
+	var (
+		relations []*Relations
+		err       error
+	)
+	if relations, err = findRelationsByID(c.Param("id")); err != nil {
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
+		return
+	}
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: relations})
+}
+
+func getTemplateHandler(c *gin.Context) {
+	var (
+		templates []*Templates
+		err       error
+	)
+	if templates, err = findTemplatesByID(c.Param("id")); err != nil {
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
+		return
+	}
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: templates})
+}
 
 func sessionAuth(c *gin.Context) {
 	session := sessions.Default(c)
 	if session.Get("username") == nil || session.Get("username").(string) == "" {
 		c.AbortWithStatusJSON(401, Resp{Code: -1, Msg: "Please login!"})
 		return
+	}
+	if strings.HasPrefix(c.Request.RequestURI, "/user") {
+		if session.Get("role") == nil || session.Get("username").(int) <= 0 {
+			c.AbortWithStatusJSON(401, Resp{Code: -1, Msg: "Permission denied"})
+			return
+		}
 	}
 }
 
@@ -186,9 +255,21 @@ func newRouter() *gin.Engine {
 		g.POST("/receive", addReceiveHandler)
 		g.POST("/pusher", addPusherHandler)
 		g.POST("/relation", addRelationHandler)
+		g.POST("/template", addTemplateHandler)
+
+		g.GET("/receive", getReceiveHandler)
+		g.GET("/receive/:id", getReceiveHandler)
+		g.GET("/pusher", getPusherHandler)
+		g.GET("/pusher/:id", getPusherHandler)
+		g.GET("/relation", getRelationHandler)
+		g.GET("/relation/:id", getRelationHandler)
+		g.GET("/template", getTemplateHandler)
+		g.GET("/template/:id", getTemplateHandler)
 
 		g.POST("/user", addUserHandler)
-		g.POST("/template", addUserHandler)
+		g.GET("/user", getUserHandler)
+		g.GET("/user/:id", getUserHandler)
+
 	}
 
 	r.POST("/debug/user", addUserHandler)

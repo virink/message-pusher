@@ -94,7 +94,9 @@ class Mocks {
     }
     async addReceive(cb = null) {
         let data = {
-            "name": "test",
+            "name": random(12, {
+                numbers: false
+            }).toLowerCase(),
             "type": "custom",
             "header": "custom",
             "body": "{\"title\":[\"Github\"],\"text\":[\"repository.full_name\",\"repository.url\",\"commits.0.message\",\"commits.0.timestamp\",\"commits.0.author.name\"]}",
@@ -102,9 +104,23 @@ class Mocks {
         }
         return this.postReq('/api/receive', data, cb)
     }
+    async addTemplate(url, vendor, body, cb = null) {
+        let data = {
+            // URL string
+            "name": random(12, {
+                numbers: false
+            }).toLowerCase(),
+            "url": url,
+            "vendor": vendor,
+            "body": body
+        }
+        return this.postReq('/api/template', data, cb)
+    }
     async addPusher(cb = null) {
         let data = {
-            "name": "feishu_sec",
+            "name": random(12, {
+                numbers: false
+            }).toLowerCase(),
             "url": "https://open.feishu.cn/open-apis/bot/hook/xxxxxxx",
             "vendor": "feishu",
             "template_id": 1
@@ -114,9 +130,9 @@ class Mocks {
     async addRelation(cb = null) {
         let data = {
             "status": true,
-            "user_id": 1,
-            "pusher_id": 1,
-            "receive_id": 1
+            "user_id": randomNum(1, 10),
+            "pusher_id": randomNum(1, 10),
+            "receive_id": randomNum(1, 10)
         }
         return this.postReq('/api/relation', data, cb)
     }
@@ -143,7 +159,7 @@ class Mocks {
 }
 
 let m = new Mocks()
-async function doit(u = '') {
+async function doit(u = '', cb = null) {
     var username = u || random(12, {
         numbers: false
     }).toLowerCase()
@@ -152,11 +168,33 @@ async function doit(u = '') {
             await m.addReceive()
             await m.addPusher()
             await m.addRelation()
+            await cb()
         })
     })
+
 }
 
-doit()
-setTimeout(() => {
-    m.testWebhook()
-}, 1000);
+async function main() {
+    await doit('virink', async () => {
+        await m.addTemplate("https://open.feishu.cn/open-apis/bot/hook/$key", "feishu", "{\"title\":[\"Title\"],\"text\":[\"key\"]}")
+        await m.addTemplate("https://open.feishu.cn/open-apis/bot/hook/$key", "feishu", "{\"title\":[\"Title\"],\"text\":[\"key.subkey\"]}")
+        await m.addTemplate("https://open.feishu.cn/open-apis/bot/hook/$key", "feishu", "{\"title\":[\"Title\"],\"text\":[\"key.subkey.subkey1\"]}")
+        await m.addTemplate("https://open.feishu.cn/open-apis/bot/hook/$key", "feishu", "{\"title\":[\"Title\"],\"text\":[\"key\"]}")
+        await m.addTemplate("https://open.feishu.cn/open-apis/bot/hook/$key", "feishu", "{\"title\":[\"Title\"],\"text\":[\"key.subkey\"]}")
+        await m.addTemplate("https://open.feishu.cn/open-apis/bot/hook/$key", "feishu", "{\"title\":[\"Title\"],\"text\":[\"key.subkey.subkey1\"]}")
+    });
+    await doit('test');
+    await doit();
+    await doit();
+    await doit();
+    await doit();
+    await doit();
+    await doit();
+    await doit();
+    await doit();
+}
+
+main()
+// setTimeout(() => {
+//     m.testWebhook()
+// }, 1000);

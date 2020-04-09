@@ -59,8 +59,9 @@ type Logs struct {
 }
 
 func initDatabase() {
-	db.DropTableIfExists(&Users{}, &Pushers{}, &Receives{}, &Relations{})
-	db.CreateTable(&Users{}, &Pushers{}, &Receives{}, &Relations{})
+	// db.DropTableIfExists(&Users{}, &Pushers{}, &Receives{}, &Relations{}, &Templates{})
+	db.CreateTable(&Users{}, &Pushers{}, &Receives{}, &Relations{}, &Templates{})
+	// db.CreateTable(&Templates{})
 	// db.Model(&Relations{}).AddForeignKey(field string, dest string, onDelete string, onUpdate string)
 }
 
@@ -104,7 +105,7 @@ func addTemplate(template Templates) (out Templates, err error) {
 	return out, nil
 }
 
-func getPushers(username string) {
+func findPushers(username string) {
 	user := Users{
 		Username: username,
 	}
@@ -112,7 +113,7 @@ func getPushers(username string) {
 	db.Model(&user).Related(&puserhs)
 }
 
-func getRecevices() (receives []*Receives, err error) {
+func findRecevices() (receives []*Receives, err error) {
 	if err = db.Find(&receives).Error; err != nil {
 		return
 	}
@@ -129,9 +130,72 @@ func getPusherByRecevice(rid uint) (pushers []*Pushers, err error) {
 	return pushers, nil
 }
 
+func findUsersByUsername(username string) (user Users, err error) {
+	if err = db.First(&user, Users{Username: username}).Error; err != nil {
+		return
+	}
+	return user, nil
+}
+
 func findUsers(username, password string) (user Users, err error) {
 	if err = db.First(&user, Users{Username: username, Password: password}).Error; err != nil {
 		return
 	}
 	return user, nil
+}
+
+func findUsersByID(id string) (users []*Users, err error) {
+	logger.Debugln(id)
+	stmp := db.New()
+	if id != ":id" && id != "" {
+		stmp = stmp.Where("id = ?", id)
+	}
+	if err = stmp.Find(&users).Error; err != nil {
+		return
+	}
+	return users, nil
+}
+
+func findReceivesByID(id string) (receives []*Receives, err error) {
+	stmp := db.New()
+	if id != ":id" && id != "" {
+		stmp = stmp.Where("id = ?", id)
+	}
+	if err = stmp.Find(&receives).Error; err != nil {
+		return
+	}
+	return receives, nil
+}
+
+func findPushersByID(id string) (pushers []*Pushers, err error) {
+	stmp := db.New()
+	if id != ":id" && id != "" {
+		stmp = stmp.Where("id = ?", id)
+	}
+	if err = stmp.Find(&pushers).Error; err != nil {
+		return
+	}
+	return pushers, nil
+}
+
+func findRelationsByID(id string) (relations []*Relations, err error) {
+	stmp := db.New()
+	if id != ":id" && id != "" {
+		stmp = stmp.Where("id = ?", id)
+	}
+	if err = stmp.Find(&relations).Error; err != nil {
+		return
+	}
+	return relations, nil
+}
+
+func findTemplatesByID(id string) (templates []*Templates, err error) {
+	stmp := db.New()
+	if id != ":id" && id != "" {
+		stmp = stmp.Where("id = ?", id)
+	}
+	if err = stmp.Find(&templates).Error; err != nil {
+		return
+	}
+	return templates, nil
 }

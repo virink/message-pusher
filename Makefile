@@ -3,8 +3,8 @@ ARCHS=amd64 386
 LDFLAGS="-s -w"
 GCFLAGS="all=-trimpath=$(shell pwd)"
 ASMFLAGS="all=-trimpath=$(shell pwd)"
-SOURCE="./cmd/"
-APPNAME=Hongyan
+SOURCE="."
+APPNAME=pusher
 
 current:
 	@mkdir -p ${TARGET}/
