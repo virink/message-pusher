@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -106,7 +108,7 @@ func httpRequest(uri string, data string) (body []byte, err error) {
 	return body, nil
 }
 
-func parseDataAbdPush(data []byte, receive *Receives) {
+func parseDataAndPush(data []byte, receive *Receives) {
 	var (
 		err    error
 		result []byte
@@ -140,12 +142,19 @@ func parseDataAbdPush(data []byte, receive *Receives) {
 		return
 	}
 	for _, push := range pushers {
-		go func() {
+		go func(push *Pushers) {
 			var body []byte
 			if body, err = httpRequest(push.URL, string(result)); err != nil {
 				logger.Errorln(err)
 			}
 			logger.Debugln(string(body))
-		}()
+		}(push)
 	}
+}
+
+// MD5 -
+func MD5(text string) string {
+	ctx := md5.New()
+	_, _ = ctx.Write([]byte(text))
+	return hex.EncodeToString(ctx.Sum(nil))
 }

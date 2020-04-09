@@ -18,25 +18,29 @@ type Resp struct {
 }
 
 func loginHandler(c *gin.Context) {
-	if c.DefaultPostForm("username", "") == "admin" && c.DefaultPostForm("password", "") == "123456" {
-		session := sessions.Default(c)
-		session.Set("username", "admin")
-		session.Save()
-		c.Redirect(302, "/manager")
+	var (
+		user Users
+		err  error
+	)
+	if err = c.BindJSON(&user); err != nil {
+		c.JSON(400, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
-	c.Redirect(302, "/login")
-	return
+	if user, err = findUsers(user.Username, MD5(user.Password)); err != nil {
+		c.JSON(401, Resp{Code: 0, Msg: err.Error()})
+		return
+	}
+	session := sessions.Default(c)
+	session.Set("username", user.Username)
+	session.Set("role", user.Role)
+	session.Save()
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: user})
 }
 
-func managerHandler(c *gin.Context) {
+func logoutHandler(c *gin.Context) {
 	session := sessions.Default(c)
-	username := session.Get("username")
-	if username != "admin" {
-		c.Redirect(302, "/login")
-		return
-	}
-	// TODO:
+	session.Clear()
+	c.JSON(200, Resp{Code: 0, Msg: "ok"})
 }
 
 func webhookHandler(c *gin.Context) {
@@ -51,16 +55,12 @@ func webhookHandler(c *gin.Context) {
 		logger.Errorln(err.Error())
 		// TODO: add err logs
 	}
-
 	headers := url.Values(c.Request.Header).Encode()
 	for _, receive := range receives {
-		// Header
 		if strings.Contains(headers, receive.Header) ||
 			strings.Contains(string(data), receive.Keyword) {
-			go parseDataAbdPush(data, receive)
-			continue
+			go parseDataAndPush(data, receive)
 		}
-
 	}
 	c.String(200, "ok")
 }
@@ -71,24 +71,15 @@ func addUserHandler(c *gin.Context) {
 		err  error
 	)
 	if err = c.BindJSON(&user); err != nil {
-		c.JSON(400, Resp{
-			Code: 0,
-			Msg:  err.Error(),
-		})
+		c.JSON(400, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
-	if user, err = addUser(user.Username, user.Password); err != nil {
-		c.JSON(503, Resp{
-			Code: 0,
-			Msg:  err.Error(),
-		})
+	user.Password = MD5(user.Password)
+	if user, err = addUser(user); err != nil {
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
-	c.JSON(200, Resp{
-		Code: 0,
-		Msg:  "ok",
-		Data: user,
-	})
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: user})
 }
 
 func addReceiveHandler(c *gin.Context) {
@@ -97,24 +88,14 @@ func addReceiveHandler(c *gin.Context) {
 		err     error
 	)
 	if err = c.BindJSON(&receive); err != nil {
-		c.JSON(400, Resp{
-			Code: 0,
-			Msg:  err.Error(),
-		})
+		c.JSON(400, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
 	if receive, err = addReceive(receive); err != nil {
-		c.JSON(503, Resp{
-			Code: 0,
-			Msg:  err.Error(),
-		})
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
-	c.JSON(200, Resp{
-		Code: 0,
-		Msg:  "ok",
-		Data: receive,
-	})
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: receive})
 }
 
 func addPusherHandler(c *gin.Context) {
@@ -123,24 +104,14 @@ func addPusherHandler(c *gin.Context) {
 		err    error
 	)
 	if err = c.BindJSON(&pusher); err != nil {
-		c.JSON(400, Resp{
-			Code: 0,
-			Msg:  err.Error(),
-		})
+		c.JSON(400, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
 	if pusher, err = addPusher(pusher); err != nil {
-		c.JSON(503, Resp{
-			Code: 0,
-			Msg:  err.Error(),
-		})
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
-	c.JSON(200, Resp{
-		Code: 0,
-		Msg:  "ok",
-		Data: pusher,
-	})
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: pusher})
 }
 
 func addRelationHandler(c *gin.Context) {
@@ -149,35 +120,45 @@ func addRelationHandler(c *gin.Context) {
 		err      error
 	)
 	if err = c.BindJSON(&relation); err != nil {
-		c.JSON(400, Resp{
-			Code: 0,
-			Msg:  err.Error(),
-		})
+		c.JSON(400, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
 	if relation, err = addRelation(relation); err != nil {
-		c.JSON(503, Resp{
-			Code: 0,
-			Msg:  err.Error(),
-		})
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
 		return
 	}
-	c.JSON(200, Resp{
-		Code: 0,
-		Msg:  "ok",
-		Data: relation,
-	})
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: relation})
+}
+
+func addTemplateHandler(c *gin.Context) {
+	var (
+		template Templates
+		err      error
+	)
+	if err = c.BindJSON(&template); err != nil {
+		c.JSON(400, Resp{Code: 0, Msg: err.Error()})
+		return
+	}
+	if template, err = addTemplate(template); err != nil {
+		c.JSON(503, Resp{Code: 0, Msg: err.Error()})
+		return
+	}
+	c.JSON(200, Resp{Code: 0, Msg: "ok", Data: template})
+}
+
+func sessionAuth(c *gin.Context) {
+	session := sessions.Default(c)
+	if session.Get("username") == nil || session.Get("username").(string) == "" {
+		c.AbortWithStatusJSON(401, Resp{Code: -1, Msg: "Please login!"})
+		return
+	}
 }
 
 func newRouter() *gin.Engine {
 	r := gin.Default()
 
 	store := sessions.NewCookieStore([]byte(conf.Server.Secret))
-	store.Options(sessions.Options{
-		MaxAge: int(30 * time.Minute), //30min
-		Path:   "/",
-	})
-
+	store.Options(sessions.Options{MaxAge: int(30 * time.Minute), Path: "/"})
 	r.Use(sessions.Sessions("session", store))
 
 	r.Static("/assets", "./assets")
@@ -190,29 +171,27 @@ func newRouter() *gin.Engine {
 
 	r.LoadHTMLGlob("templates/*")
 
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
+	r.GET("/ping", func(c *gin.Context) { c.JSON(200, Resp{Code: 0, Msg: "pong"}) })
 
 	r.POST("/webhook", webhookHandler)
 
-	r.GET("/login", func(c *gin.Context) {
-		c.HTML(200, "login.html", nil)
-	})
+	r.GET("/", func(c *gin.Context) { c.HTML(200, "index.html", nil) })
+
+	// r.GET("/login", func(c *gin.Context) { c.HTML(200, "login.html", nil) })
 	r.POST("/login", loginHandler)
-	r.POST("/user/addreceive", addReceiveHandler)
-	r.POST("/user/addpusher", addPusherHandler)
-	r.POST("/user/addrelation", addRelationHandler)
-	g := r.Group("/admin")
+	r.GET("/logout", logoutHandler)
+
+	g := r.Group("/api", sessionAuth)
 	{
-		g.POST("/adduser", addUserHandler)
+		g.POST("/receive", addReceiveHandler)
+		g.POST("/pusher", addPusherHandler)
+		g.POST("/relation", addRelationHandler)
+
+		g.POST("/user", addUserHandler)
+		g.POST("/template", addUserHandler)
 	}
 
-	// g := r.Group("/api/v1")
-	// {
-	// }
+	r.POST("/debug/user", addUserHandler)
 
 	return r
 }

@@ -9,14 +9,15 @@ import (
 // Users -
 type Users struct {
 	gorm.Model
-	Username string `gorm:"type:varchar(25);unique_index"`
-	Password string `gorm:"type:varchar(256)" json:"password"`
+	Username string `gorm:"type:varchar(25);unique_index" json:"username"`
+	Password string `gorm:"type:varchar(256)" json:"-"`
+	Role     int    `gorm:"default:0" json:"role"`
 }
 
 // Receives -
 type Receives struct {
 	gorm.Model
-	Name    string
+	Name    string `json:"name"`
 	Type    string
 	Header  string
 	Keyword string
@@ -26,7 +27,7 @@ type Receives struct {
 // Pushers -
 type Pushers struct {
 	gorm.Model
-	URL        string
+	URL        string // with key
 	Name       string
 	Vendor     string
 	TemplateID uint `json:"template_id"`
@@ -48,13 +49,7 @@ type Relations struct {
 	UserID    uint `json:"user_id"`
 	PusherID  uint `json:"pusher_id"`
 	ReceiveID uint `json:"receive_id"`
-	// Users     Users     `gorm:"foreignkey:UserID"`
-	// Pushers   []Pushers `gorm:"foreignkey:PusherID"`
-	// Receives  Receives  `gorm:"foreignkey:ReceiveID"`
 }
-
-// `{"title": "Feishu","text": "Required"}`
-// `{"name":"virink","sex":1,"text":"hello world","ignore":"keyword"}`
 
 // Logs -
 type Logs struct {
@@ -69,22 +64,14 @@ func initDatabase() {
 	// db.Model(&Relations{}).AddForeignKey(field string, dest string, onDelete string, onUpdate string)
 }
 
-func addUser(username, password string) (user Users, err error) {
-	if db.First(&user, Users{Username: username}).RecordNotFound() {
-		user = Users{
-			Username: username,
-			Password: password,
-		}
+func addUser(user Users) (out Users, err error) {
+	if db.First(&user, Users{Username: user.Username}).RecordNotFound() {
 		if err = db.Create(&user).Error; err != nil {
 			return
 		}
 		return user, nil
 	}
-	return user, errors.New("Username is exists")
-	// if err = db.FirstOrCreate(&out, &user).Error; err != nil {
-	// 	return out, err
-	// }
-	// return out, nil
+	return out, errors.New("Username is exists")
 }
 
 func addRelation(relation Relations) (out Relations, err error) {
@@ -94,6 +81,7 @@ func addRelation(relation Relations) (out Relations, err error) {
 	}
 	return out, nil
 }
+
 func addPusher(pusher Pushers) (out Pushers, err error) {
 	if err = db.FirstOrCreate(&out, pusher).Error; err != nil {
 		return out, err
@@ -103,6 +91,14 @@ func addPusher(pusher Pushers) (out Pushers, err error) {
 
 func addReceive(receive Receives) (out Receives, err error) {
 	if err = db.FirstOrCreate(&out, receive).Error; err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func addTemplate(template Templates) (out Templates, err error) {
+	logger.Debug(template)
+	if err = db.FirstOrCreate(&out, &template).Error; err != nil {
 		return out, err
 	}
 	return out, nil
@@ -131,4 +127,11 @@ func getPusherByRecevice(rid uint) (pushers []*Pushers, err error) {
 		return
 	}
 	return pushers, nil
+}
+
+func findUsers(username, password string) (user Users, err error) {
+	if err = db.First(&user, Users{Username: username, Password: password}).Error; err != nil {
+		return
+	}
+	return user, nil
 }
