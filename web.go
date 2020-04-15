@@ -272,7 +272,7 @@ func newRouter() *gin.Engine {
 
 	}
 
-	r.POST("/debug/user", addUserHandler)
+	// r.POST("/debug/user", addUserHandler)
 
 	return r
 }
