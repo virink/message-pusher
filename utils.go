@@ -137,7 +137,7 @@ func parseDataAndPush(data []byte, receive *Receives) {
 		}
 	}
 	var pushers []*Pushers
-	if pushers, err = getPusherByRecevice(receive.ID); err != nil {
+	if pushers, err = findPusherByRecevice(receive.ID); err != nil {
 		logger.Errorln(err.Error())
 		return
 	}

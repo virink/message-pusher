@@ -124,7 +124,7 @@ func getPusherByRecevice(rid uint) (pushers []*Pushers, err error) {
 	if err = db.Joins("JOIN relations ON relations.pusher_id = pushers.id").
 		Joins("JOIN users ON users.id = relations.user_id").
 		Joins("JOIN receives ON receives.id = relations.receive_id").
-		Where("relations.id = ?", rid).Find(&pushers).Error; err != nil {
+		Where("receives.id = ?", rid).Find(&pushers).Error; err != nil {
 		return
 	}
 	return pushers, nil
