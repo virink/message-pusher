@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	// mysql driver
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
@@ -98,6 +98,7 @@ func httpRequest(uri string, data string) (body []byte, err error) {
 	if req, err = http.NewRequest("POST", uri, strings.NewReader(data)); err != nil {
 		return nil, err
 	}
+	req.Header.Set("Content-Type", "application/json")
 	if resp, err = client.Do(req); err != nil {
 		return nil, err
 	}
@@ -111,40 +112,37 @@ func httpRequest(uri string, data string) (body []byte, err error) {
 func parseDataAndPush(data []byte, receive *Receives) {
 	var (
 		err    error
-		result []byte
+		varMap = make(map[string]string)
 	)
 	dataObj := gjson.ParseBytes(data)
-	jsonObj := gjson.Parse(receive.Body)
-	if jsonObj.IsObject() {
-		var resObj = make(map[string]interface{})
-		jsonObj.ForEach(func(key, value gjson.Result) bool {
-			var content []string
-			if value.IsArray() {
-				for _, val := range value.Array() {
-					t := dataObj.Get(val.String())
-					if !t.Exists() {
-						content = append(content, val.String())
-					} else {
-						content = append(content, t.String())
-					}
-				}
-				resObj[key.String()] = strings.Join(content, "\n")
-			}
-			return true
-		})
-		if result, err = json.Marshal(resObj); err != nil {
-			return
-		}
+	varObj := gjson.Parse(receive.Variable)
+	if !varObj.IsArray() {
+		logger.Errorln("Receive.Variable is error")
+		return
 	}
+	varObj.ForEach(func(key, value gjson.Result) bool {
+		varName := value.String()
+		varMap[varName] = dataObj.Get(varName).String()
+		return true
+	})
+
 	var pushers []*Pushers
 	if pushers, err = findPusherByRecevice(receive.ID); err != nil {
-		logger.Errorln(err.Error())
+		logger.Errorln(err)
 		return
 	}
 	for _, push := range pushers {
 		go func(push *Pushers) {
-			var body []byte
-			if body, err = httpRequest(push.URL, string(result)); err != nil {
+			var (
+				body   []byte
+				result string
+			)
+			result = push.Template
+			for k, v := range varMap {
+				result = strings.ReplaceAll(result, fmt.Sprintf("${%s}", k), v)
+			}
+			logger.Debugln(result)
+			if body, err = httpRequest(push.URL, result); err != nil {
 				logger.Errorln(err)
 			}
 			logger.Debugln(string(body))

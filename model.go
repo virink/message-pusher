@@ -21,16 +21,17 @@ type Receives struct {
 	Type    string
 	Header  string
 	Keyword string
-	Body    string
+	// Body     string
+	Variable string
 }
 
 // Pushers -
 type Pushers struct {
 	gorm.Model
-	URL        string // with key
-	Name       string
-	Vendor     string
-	TemplateID uint `json:"template_id"`
+	URL      string // with key
+	Name     string
+	Vendor   string
+	Template string
 }
 
 // Templates -
@@ -58,9 +59,64 @@ type Logs struct {
 	PushersID  uint
 }
 
+func debugDB() {
+	user, _ := addUser(Users{Username: "virink", Password: MD5("123456"), Role: 9})
+	logger.Debugln(user)
+	r, _ := addReceive(Receives{
+		Name:     "chamd5_ti_dingding",
+		Type:     "dingding",
+		Keyword:  "dingding",
+		Variable: `["text.content"]`,
+	})
+	logger.Debugln(r)
+
+	// t1, _ := addTemplate(Templates{
+	// 	URL:    "https://oapi.dingtalk.com/robot/send?access_token=$key",
+	// 	Vendor: "dingding",
+	// 	Name:   "dingding_text",
+	// 	Body:   `{"msgtype":"text","text":{"content":"key.subkey"}`,
+	// })
+	// t2, _ := addTemplate(Templates{
+	// 	URL:    "https://open.feishu.cn/open-apis/bot/hook/$key",
+	// 	Vendor: "feishu",
+	// 	Name:   "feishu_text",
+	// 	Body:   `{"msgtype":"text","text":{"content":"key.subkey"}`,
+	// })
+	// logger.Debugln(t1)
+	// logger.Debugln(t2)
+	p1, _ := addPusher(Pushers{
+		URL:      "https://oapi.dingtalk.com/robot/send?access_token=e38ed299a78666082c96034ed47efae6aa8e812ed3aa9b4264d26a89ec534288",
+		Name:     "chamd5_ti_dingding_text",
+		Vendor:   "dingding",
+		Template: `{"msgtype":"text","text":{"content":"${text.content}"}}`,
+	})
+	p2, _ := addPusher(Pushers{
+		URL:      "https://open.feishu.cn/open-apis/bot/hook/e3fe90555f7b47289cabb3ab2b5a239f",
+		Name:     "chamd5_ti_feishu_text",
+		Vendor:   "feishu",
+		Template: `{"title":"情报威胁","text":"${text.content}"}`,
+	})
+	logger.Debugln(p1)
+	logger.Debugln(p2)
+
+	addRelation(Relations{
+		Status:    true,
+		UserID:    user.ID,
+		PusherID:  p1.ID,
+		ReceiveID: r.ID,
+	})
+	addRelation(Relations{
+		Status:    true,
+		UserID:    user.ID,
+		PusherID:  p2.ID,
+		ReceiveID: r.ID,
+	})
+}
+
 func initDatabase() {
-	// db.DropTableIfExists(&Users{}, &Pushers{}, &Receives{}, &Relations{}, &Templates{})
+	db.DropTableIfExists(&Users{}, &Pushers{}, &Receives{}, &Relations{}, &Templates{})
 	db.CreateTable(&Users{}, &Pushers{}, &Receives{}, &Relations{}, &Templates{})
+	debugDB()
 	// db.CreateTable(&Templates{})
 	// db.Model(&Relations{}).AddForeignKey(field string, dest string, onDelete string, onUpdate string)
 }

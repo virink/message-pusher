@@ -20,7 +20,8 @@
             |                                              |
         [Relation]                                         |    ->    pust to [Target]
             |                                              |
-            ->    [Pusher]    ->    {{Pusher.url}}   ->    |
+            ->   [Pusher]   ->   {{Pusher.url&var}}   ->   |
+                                {{Pusher.template}}   ->   |
 
 ## TODO
 
