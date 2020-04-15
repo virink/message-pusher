@@ -120,7 +120,7 @@ func findRecevices() (receives []*Receives, err error) {
 	return receives, nil
 }
 
-func getPusherByRecevice(rid uint) (pushers []*Pushers, err error) {
+func findPusherByRecevice(rid uint) (pushers []*Pushers, err error) {
 	if err = db.Joins("JOIN relations ON relations.pusher_id = pushers.id").
 		Joins("JOIN users ON users.id = relations.user_id").
 		Joins("JOIN receives ON receives.id = relations.receive_id").
