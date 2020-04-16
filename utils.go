@@ -89,8 +89,6 @@ func initLogger(filename string, level logrus.Level) *logrus.Logger {
 }
 
 func httpRequest(uri string, data string) (body []byte, err error) {
-	logger.Debugln(uri)
-	logger.Debugln(data)
 	var (
 		req  *http.Request
 		resp *http.Response
@@ -115,16 +113,13 @@ func parseDataAndPush(data []byte, receive *Receives) {
 		varMap = make(map[string]string)
 	)
 	dataObj := gjson.ParseBytes(data)
-	varObj := gjson.Parse(receive.Variable)
-	if !varObj.IsArray() {
-		logger.Errorln("Receive.Variable is error")
-		return
+	vars := strings.Split(receive.Variable, ",")
+	for _, v := range vars {
+		t := dataObj.Get(v)
+		if t.Exists() {
+			varMap[v] = t.String()
+		}
 	}
-	varObj.ForEach(func(key, value gjson.Result) bool {
-		varName := value.String()
-		varMap[varName] = dataObj.Get(varName).String()
-		return true
-	})
 
 	var pushers []*Pushers
 	if pushers, err = findPusherByRecevice(receive.ID); err != nil {
@@ -141,6 +136,8 @@ func parseDataAndPush(data []byte, receive *Receives) {
 			for k, v := range varMap {
 				result = strings.ReplaceAll(result, fmt.Sprintf("${%s}", k), v)
 			}
+			// Fix
+			result = strings.ReplaceAll(result, "\n", "\\n")
 			logger.Debugln(result)
 			if body, err = httpRequest(push.URL, result); err != nil {
 				logger.Errorln(err)

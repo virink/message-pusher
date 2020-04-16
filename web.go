@@ -22,16 +22,18 @@ func loginHandler(c *gin.Context) {
 		user, json Users
 		err        error
 	)
-	if err = c.BindJSON(&json); err != nil {
-		c.JSON(400, Resp{Code: 0, Msg: err.Error()})
+	if err = c.ShouldBindJSON(&json); err != nil {
+		c.JSON(400, Resp{Code: -1, Msg: err.Error()})
 		return
 	}
 	if user, err = findUsersByUsername(json.Username); err != nil {
-		c.JSON(401, Resp{Code: 0, Msg: err.Error()})
+		c.JSON(401, Resp{Code: -2, Msg: err.Error()})
 		return
 	}
+	logger.Debugln(json)
+	logger.Debugln(user)
 	if user.Password != MD5(json.Password) {
-		c.JSON(401, Resp{Code: 0, Msg: "password is error"})
+		c.JSON(401, Resp{Code: -3, Msg: "password is error"})
 		return
 	}
 	session := sessions.Default(c)

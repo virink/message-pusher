@@ -10,18 +10,18 @@ import (
 type Users struct {
 	gorm.Model
 	Username string `gorm:"type:varchar(25);unique_index" json:"username"`
-	Password string `gorm:"type:varchar(256)" json:"-"`
+	Password string `gorm:"type:varchar(256)" json:"password"`
 	Role     int    `gorm:"default:0" json:"role"`
 }
 
 // Receives -
 type Receives struct {
 	gorm.Model
-	Name    string `json:"name"`
-	Type    string
-	Header  string
-	Keyword string
-	// Body     string
+	Name     string `json:"name"`
+	Type     string
+	Header   string
+	Keyword  string
+	Body     string
 	Variable string
 }
 
@@ -66,7 +66,8 @@ func debugDB() {
 		Name:     "chamd5_ti_dingding",
 		Type:     "dingding",
 		Keyword:  "dingding",
-		Variable: `["text.content"]`,
+		Variable: `markdown.text,markdown.title`,
+		Body:     `{"msgtype":"markdown","markdown":{"title":"xxx","text":"xxx"}}`,
 	})
 	logger.Debugln(r)
 
@@ -88,13 +89,13 @@ func debugDB() {
 		URL:      "https://oapi.dingtalk.com/robot/send?access_token=e38ed299a78666082c96034ed47efae6aa8e812ed3aa9b4264d26a89ec534288",
 		Name:     "chamd5_ti_dingding_text",
 		Vendor:   "dingding",
-		Template: `{"msgtype":"text","text":{"content":"${text.content}"}}`,
+		Template: `{"msgtype":"markdown","markdown":{"title":"${markdown.title}","text":"${markdown.text}"}}`,
 	})
 	p2, _ := addPusher(Pushers{
 		URL:      "https://open.feishu.cn/open-apis/bot/hook/e3fe90555f7b47289cabb3ab2b5a239f",
 		Name:     "chamd5_ti_feishu_text",
 		Vendor:   "feishu",
-		Template: `{"title":"情报威胁","text":"${text.content}"}`,
+		Template: `{"title":"${markdown.title}","text":"${markdown.text}"}`,
 	})
 	logger.Debugln(p1)
 	logger.Debugln(p2)
@@ -116,7 +117,8 @@ func debugDB() {
 func initDatabase() {
 	db.DropTableIfExists(&Users{}, &Pushers{}, &Receives{}, &Relations{}, &Templates{})
 	db.CreateTable(&Users{}, &Pushers{}, &Receives{}, &Relations{}, &Templates{})
-	debugDB()
+	addUser(Users{Username: "virink", Password: MD5("123456"), Role: 9})
+	// debugDB()
 	// db.CreateTable(&Templates{})
 	// db.Model(&Relations{}).AddForeignKey(field string, dest string, onDelete string, onUpdate string)
 }

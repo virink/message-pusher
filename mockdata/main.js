@@ -42,12 +42,10 @@ class Mocks {
                     this.cookie = resp.headers['set-cookie'].toString()
                     console.debug(this.cookie)
                 }
-                if (typeof cb == "function") {
-                    cb(body)
-                }
+                typeof cb == "function" && cb(body)
             } else {
                 console.error(err)
-                // console.error(resp)
+                console.error(resp.body)
             }
         });
     }
@@ -78,10 +76,10 @@ class Mocks {
     //     }
     //     return this.postReq('/auth/register', data, cb)
     // }
-    login(username, password = '123456', cb = null) {
+    async login(username, password = '123456', cb = null) {
         let data = {
-            username: username,
-            password: password
+            "username": username,
+            "password": password
         }
         return this.postReq('/login', data, cb)
     }
@@ -142,12 +140,12 @@ class Mocks {
     async testWebhook(cb = null) {
         let data = {
             "repository": {
-                "name": "hongyan",
-                "full_name": "virink/hongyan",
-                "url": "https://github.com/virink/hongyan"
+                "name": "xxxxx",
+                "full_name": "virink/xxxxx",
+                "url": "https://github.com/virink/xxxxx"
             },
             "commits": [{
-                "id": "211df76b20ce909458a771d6dc5d8e1ef7c54b9b",
+                "id": "xxxxxxxx",
                 "message": "Update Fuck thing",
                 "timestamp": "2020-03-23T21:22:07+08:00",
                 "author": {
@@ -198,59 +196,64 @@ async function main() {
 }
 
 async function chamd5(username = 'virink', password = '123456') {
-    await m.login(username, username, async (_) => {
-        await m.addTemplate("https://open.feishu.cn/open-apis/bot/hook/$key", "feishu", "{\"title\":[\"Title\"],\"text\":[\"key\"]}")
-        await m.addTemplate("https://oapi.dingtalk.com/robot/send?access_token=$key", "dingding_text", "{\"msgtype\":[\"text\"],\"text\":{\"content\":[\"text.content\"]}}")
+    let m = new Mocks()
+    console.log(m)
+    await m.login(username, password, async (body) => {
+        console.log(body)
         let r = {
             "name": "chamd5_ti_dingding",
             "type": "dingding",
             "header": "",
-            "body": "{\"title\":[\"ChaMD5\"],\"text\":[\"text.ccontent\"]}",
-            "keyword": ""
+            "body": `{"msgtype":"markdown","markdown":{"title":"xxx","text":"xxx"}}`,
+            "keyword": "",
+            "variable": "markdown.text,markdown.title"
+
         }
         await m.addReceive(r)
         var p = {
             "name": "chamd5_ti_feishu",
-            "url": "https://open.feishu.cn/open-apis/bot/hook/e3fe90555f7b47289cabb3ab2b5a239f",
+            "url": "https://open.feishu.cn/open-apis/bot/hook/$key",
             "vendor": "feishu",
-            "template_id": 0
+            "template": `{"title":"\${markdown.title}","text":"\${markdown.text}"}`
         }
         await m.addPusher(p)
         p = {
             "name": "chamd5_ti_dingding",
-            "url": "https://oapi.dingtalk.com/robot/send?access_token=e38ed299a78666082c96034ed47efae6aa8e812ed3aa9b4264d26a89ec534288",
+            "url": "https://oapi.dingtalk.com/robot/send?access_token=$key",
             "vendor": "dingding",
-            "template_id": 0
+            "template": `{"msgtype":"markdown","markdown":{"title":"\${markdown.title}","text":"## \${markdown.title}\n\${markdown.text}"}}`
         }
         await m.addPusher(p)
-        // let rr = {
-        //     "status": true,
-        //     "user_id": 1,
-        //     "pusher_id": randomNum(1, 10),
-        //     "receive_id": randomNum(1, 10)
-        // }
-        // await m.addRelation()
-    })
-}
-
-// chamd5()
-async function chamd5_r(username = 'virink', password = '123456') {
-    await m.login(username, username, async (_) => {
-        var rr = {
+        await m.addRelation({
             "status": true,
             "user_id": 1,
-            "pusher_id": 11,
-            "receive_id": 12
-        }
-        await m.addRelation(rr)
-        rr["pusher_id"] = 12
-        await m.addRelation(rr)
-
+            "pusher_id": 1,
+            "receive_id": 1
+        })
+        await m.addRelation({
+            "status": true,
+            "user_id": 1,
+            "pusher_id": 2,
+            "receive_id": 1
+        })
     })
 }
 
-chamd5_r()
-
+if (process.argv[2] == "t") {
+    chamd5()
+} else {
+    m.postReq('/webhook', {
+        "msgtype": "markdown",
+        "markdown": {
+            "title": "Github 发现了新漏洞",
+            "text": `url: https://github.com/tamirzb/CVE-2019-14040  
+描述: PoC code for CVE-2019-14040  
+发现时间: 2020-04-15 22:37:51  
+请及时查看和处理  
+----From: ChaMD5`
+        }
+    })
+}
 
 // main()
 // setTimeout(() => {
